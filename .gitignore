@@ -1,4 +1,5 @@
 _build
+_opam
 setup.data
 setup.log
 doc/*.html
