@@ -17,7 +17,7 @@ let () =
   let system, output =
     try
       match Sys.argv with
-      | [|_; "--system"; system; "-o"; output|] ->
+      | [| _; "--system"; system; "-o"; output |] ->
           let system =
             match system with
             | "linux" -> `Linux
@@ -30,26 +30,24 @@ let () =
     with _ -> invalid_arg "%s --system system -o <output>" Sys.argv.(0)
   in
   let oc_ml, oc_c, oc_sexp =
-    ( open_out (output ^ ".ml")
-    , open_out (output ^ "_stubs.c")
-    , open_out (output ^ ".sexp") )
+    ( open_out (output ^ ".ml"),
+      open_out (output ^ "_stubs.c"),
+      open_out (output ^ ".sexp") )
   in
   let ml, c, sexp =
     match system with
     | `Linux ->
-        ( load_file "clock_linux.ml"
-        , load_file "clock_linux_stubs.c"
-        , sexp_linux )
+        (load_file "clock_linux.ml", load_file "clock_linux_stubs.c", sexp_linux)
     | `Windows ->
-        ( load_file "clock_windows.ml"
-        , load_file "clock_windows_stubs.c"
-        , sexp_windows )
+        ( load_file "clock_windows.ml",
+          load_file "clock_windows_stubs.c",
+          sexp_windows )
     | `MacOSX ->
         (load_file "clock_mach.ml", load_file "clock_mach_stubs.c", sexp_mach)
   in
-  Printf.fprintf oc_ml "%s%!" ml ;
-  Printf.fprintf oc_c "%s%!" c ;
-  Printf.fprintf oc_sexp "%s%!" sexp ;
-  close_out oc_ml ;
-  close_out oc_c ;
+  Printf.fprintf oc_ml "%s%!" ml;
+  Printf.fprintf oc_c "%s%!" c;
+  Printf.fprintf oc_sexp "%s%!" sexp;
+  close_out oc_ml;
+  close_out oc_c;
   close_out oc_sexp

@@ -9,6 +9,7 @@ let[@inline] get x i = String.unsafe_get x i |> Char.code
 *)
 
 external unsafe_get_int16 : string -> int -> int = "%caml_string_get16u"
+
 let[@inline] get16 x i = unsafe_get_int16 x i
 
 (* XXX(dinosaure): same as [unsafe_get] but for [int16]:
@@ -26,14 +27,14 @@ let equal ~ln a b =
         sarq    $1, %rcx
         orq     $1, %rcx
   *)
-
   let r = ref 0 in
 
   (*
         movq    $1, %rdx
   *)
-
-  for i = 0 to pred l1 do r := !r lor (get16 a (i * 2) lxor get16 b (i * 2)) done ;
+  for i = 0 to pred l1 do
+    r := !r lor (get16 a (i * 2) lxor get16 b (i * 2))
+  done;
 
   (*
         movq    $1, %rsi
@@ -60,8 +61,9 @@ let equal ~ln a b =
         jne     .L105
 .L104:
   *)
-
-  for _ = 1 to ln land 1 do r := !r lor (get a (ln - 1) lxor get b (ln - 1)) done ;
+  for _ = 1 to ln land 1 do
+    r := !r lor (get a (ln - 1) lxor get b (ln - 1))
+  done;
 
   (*
         movq    $3, %rsi
@@ -90,7 +92,6 @@ let equal ~ln a b =
         jne     .L103
 .L102:
   *)
-
   !r = 0
 
 (*
@@ -104,13 +105,14 @@ let equal ~ln a b =
 let equal a b =
   let al = String.length a in
   let bl = String.length b in
-  if al <> bl
-  then false
-  else equal ~ln:al a b
+  if al <> bl then false else equal ~ln:al a b
 
-let[@inline always] compare (a:int) b = a - b
-let[@inline always] sixteen_if_minus_one_or_less n = (n asr Sys.int_size) land 16
-let[@inline always] eight_if_one_or_more n = ((-n) asr Sys.int_size) land 8
+let[@inline always] compare (a : int) b = a - b
+
+let[@inline always] sixteen_if_minus_one_or_less n =
+  (n asr Sys.int_size) land 16
+
+let[@inline always] eight_if_one_or_more n = (-n asr Sys.int_size) land 8
 
 let compare_le ~ln a b =
   let r = ref 0 in
@@ -119,9 +121,10 @@ let compare_le ~ln a b =
   while !i >= 0 do
     let xa = get a !i and xb = get b !i in
     let c = compare xa xb in
-    r := !r lor ((sixteen_if_minus_one_or_less c + eight_if_one_or_more c) lsr !r) ;
-    decr i ;
-  done ;
+    r :=
+      !r lor ((sixteen_if_minus_one_or_less c + eight_if_one_or_more c) lsr !r);
+    decr i
+  done;
 
   (!r land 8) - (!r land 16)
 
@@ -129,17 +132,15 @@ let compare_le_with_len ~len:ln a b =
   let al = String.length a in
   let bl = String.length b in
   if ln = 0 then 0
-  else if (al lxor ln) lor (bl lxor ln) <> 0
-  then invalid_arg "compare_le_with_len"
+  else if al lxor ln lor (bl lxor ln) <> 0 then
+    invalid_arg "compare_le_with_len"
   else compare_le ~ln a b
 
 let compare_le a b =
   let al = String.length a in
   let bl = String.length b in
-  if al < bl
-  then 1
-  else if al > bl
-  then (-1)
+  if al < bl then 1
+  else if al > bl then -1
   else compare_le ~ln:al (* = bl *) a b
 
 let compare_be ~ln a b =
@@ -149,9 +150,10 @@ let compare_be ~ln a b =
   while !i < ln do
     let xa = get a !i and xb = get b !i in
     let c = compare xa xb in
-    r := !r lor ((sixteen_if_minus_one_or_less c + eight_if_one_or_more c) lsr !r) ;
-    incr i ;
-  done ;
+    r :=
+      !r lor ((sixteen_if_minus_one_or_less c + eight_if_one_or_more c) lsr !r);
+    incr i
+  done;
 
   (!r land 8) - (!r land 16)
 
@@ -159,31 +161,29 @@ let compare_be_with_len ~len:ln a b =
   let al = String.length a in
   let bl = String.length b in
   if ln = 0 then 0
-  else if (al lxor ln) lor (bl lxor ln) <> 0
-  then invalid_arg "compare_be_with_len"
+  else if al lxor ln lor (bl lxor ln) <> 0 then
+    invalid_arg "compare_be_with_len"
   else compare_be ~ln a b
 
 let compare_be a b =
   let al = String.length a in
   let bl = String.length b in
   if al < bl then 1
-  else if al > bl then (-1)
+  else if al > bl then -1
   else compare_be ~ln:al (* = bl *) a b
 
-let[@inline always] minus_one_or_less n =
-  n lsr (Sys.int_size - 1)
+let[@inline always] minus_one_or_less n = n lsr (Sys.int_size - 1)
 
-let[@inline always] one_if_not_zero n =
-  minus_one_or_less ((- n) lor n)
+let[@inline always] one_if_not_zero n = minus_one_or_less (-n lor n)
 
-let[@inline always] zero_if_not_zero n =
-  (one_if_not_zero n) - 1
+let[@inline always] zero_if_not_zero n = one_if_not_zero n - 1
 
 let[@inline always] select_int choose_b a b =
-  let mask = ((- choose_b) lor choose_b) asr Sys.int_size in
-  (a land (lnot mask)) lor (b land mask)
+  let mask = (-choose_b lor choose_b) asr Sys.int_size in
+  a land lnot mask lor (b land mask)
 
 external int_of_bool : bool -> int = "%identity"
+
 external unsafe_bool_of_int : int -> bool = "%identity"
 
 let[@inline always] find_uint8 ~off ~len ~f str =
@@ -196,11 +196,12 @@ let[@inline always] find_uint8 ~off ~len ~f str =
        [let f = bool_of_int <.> f in] implies an allocation (of a closure).
        To be GC-free, we must store result of [f] into a register, and apply
        [bool_of_int] then (introspection was done on OCaml 4.08.1). *)
-    a := select_int (((!i - off) land min_int) lor pred) !a !i ;
-    decr i ;
-  done ; !a
+    a := select_int ((!i - off) land min_int lor pred) !a !i;
+    decr i
+  done;
+  !a
 
-let find_uint8 ?(off= 0) ~f str =
+let find_uint8 ?(off = 0) ~f str =
   (* XXX(dinosaure): with this overload, OCaml is able to produce 2 [find_uint8].
      One with [off= 0] and one other where [off] is an argument. I think it's about
      cross-module optimization where a call to [find_uint8 ~f v] will directly call

@@ -1,42 +1,49 @@
-name: Eqaf
+name: Build and Test
 
-on: [push, pull_request]
+on:
+  - pull_request
+  - push
 
 jobs:
   tests:
-    name: Tests
-
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: ["4.10.0", "4.09.0", "4.08.1"]
-        operating-system: [macos-latest, ubuntu-latest, windows-latest]
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        ocaml-version:
+          - 4.08.x
+          - 4.09.x
+          - 4.10.x
+          - 4.11.x
 
-    runs-on: ${{ matrix.operating-system }}
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+        uses: actions-ml/setup-ocaml@master
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
+          dune-cache: ${{ matrix.os != 'windows-latest' }}
+
+      - run: |
+          rm /Users/runner/.opam/opam-init/hooks/sandbox.sh
+          curl -sLo /Users/runner/.opam/opam-init/hooks/sandbox.sh https://raw.githubusercontent.com/ocaml/opam/master/src/state/shellscripts/sandbox_exec.sh
+          chmod 777 /Users/runner/.opam/opam-init/hooks/sandbox.sh
+        if: matrix.os == 'macos-latest'
+
+      - run: |
+          opam pin add dune.dev https://github.com/dra27/dune.git#progress-4167
+          opam depext dune --install
 
       - name: Install nasm
         uses: ilammy/setup-nasm@v1
 
-      - name: Install dependencies
-        run: |
-          opam pin add -n eqaf .
-          opam depext -y eqaf
-          opam install -t --deps-only .
+      - run: opam install . --deps-only --with-test
 
-      - name: Build
-        run: opam exec -- dune build -p eqaf
-      - name: Simple tests
-        run: opam exec -- dune exec test/test.exe
-      - name: Branch tests
-        run: opam exec -- dune exec test/test_branch.exe
-      - name: Fuzz tests
-        run: opam exec -- dune exec fuzz/fuzz.exe
+      - run: opam exec -- dune build -p eqaf
